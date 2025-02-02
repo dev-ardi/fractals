@@ -78,16 +78,16 @@ fn main() {
                 // Close events
                 if input.key_pressed(KeyCode::Escape) || input.close_requested() {
                     window_target.exit();
-                } else if input.key_pressed(KeyCode::ArrowUp) {
+                } else if input.key_held(KeyCode::ArrowUp) {
                     config.offset_y -= 1.0;
                     refresh = true;
-                } else if input.key_pressed(KeyCode::ArrowDown) {
+                } else if input.key_held(KeyCode::ArrowDown) {
                     config.offset_y += 1.0;
                     refresh = true;
-                } else if input.key_pressed(KeyCode::ArrowLeft) {
+                } else if input.key_held(KeyCode::ArrowLeft) {
                     config.offset_x -= 1.0;
                     refresh = true;
-                } else if input.key_pressed(KeyCode::ArrowRight) {
+                } else if input.key_held(KeyCode::ArrowRight) {
                     config.offset_x += 1.0;
                     refresh = true;
                 } else if input.key_pressed(KeyCode::KeyZ) {
@@ -102,6 +102,10 @@ fn main() {
                         config.branches = 1;
                     }
                     refresh = true;
+                } else if input.key_held(KeyCode::KeyA) {
+                    config.iters += 1;
+                } else if input.key_held(KeyCode::KeyS) {
+                    config.iters = config.iters.saturating_sub(1);
                 }
 
                 if refresh {
@@ -201,6 +205,7 @@ impl RenderState {
 
         self.remaining -= 1;
         // TODO: Use normal coordinates
+        // Need this for proper zooming
         for curr in &mut self.leaves.left_leaves {
             buf[*curr * 4..*curr * 4 + 4].fill(255);
             *curr -= 1;
