@@ -62,7 +62,7 @@ fn main() {
             } = event
             {
                 let t0 = Instant::now();
-                eprint!("Rendering {} nodes... ", state.leaves.len());
+                eprint!("Rendering {} nodes... ", state.leaves.left_leaves.len() * 4);
                 for _ in 0..config.iters {
                     state.next(pixels.frame_mut());
                 }
@@ -94,6 +94,9 @@ fn main() {
                 } else if input.key_pressed(KeyCode::KeyX) {
                     config.offset_x -= 0.1;
                     refresh = true;
+                } else if input.key_pressed(KeyCode::KeyT) {
+                    config.third_branch = !config.third_branch;
+                    refresh = true;
                 }
 
                 if refresh {
@@ -114,93 +117,101 @@ fn main() {
 struct RenderState {
     last_length: u16,
     remaining: u16,
-    leaves: Vec<Substate>,
     config: UserConfig,
+    leaves: Leaves,
+}
+
+#[derive(Debug, Default)]
+struct Leaves {
+    down_leaves: Vec<usize>,
+    up_leaves: Vec<usize>,
+    right_leaves: Vec<usize>,
+    left_leaves: Vec<usize>,
 }
 
 impl RenderState {
     fn new_def(config: UserConfig) -> Self {
-        Self::new(
-            Substate {
-                direction: Direction::YPos,
-                last: WIDTH / 2,
-            },
-            HEIGHT as u16 / 2,
-            config,
-        )
-    }
-    fn new(initial: Substate, length: u16, config: UserConfig) -> Self {
         Self {
-            last_length: length,
-            remaining: length,
-            leaves: vec![initial],
+            last_length: HEIGHT as u16 / 2,
+            remaining: HEIGHT as u16 / 2,
             config,
+            leaves: Leaves {
+                down_leaves: vec![WIDTH / 2],
+                up_leaves: vec![],
+                right_leaves: vec![],
+                left_leaves: vec![],
+            },
         }
     }
+
     fn next(&mut self, buf: &mut [u8]) {
         if self.remaining == 0 {
             let t0 = Instant::now();
             eprint!("Creating new nodes...");
-            let len = self.leaves.len();
             self.last_length /= 2;
             self.remaining = self.last_length;
             if self.last_length == 0 {
                 return;
             }
 
-            self.leaves.reserve(len);
-            for i in 0..len {
-                let mut curr = self.leaves[i];
-                match curr.direction {
-                    Direction::XPos | Direction::XNeg => {
-                        curr.direction = Direction::YPos;
-                        self.leaves.push(curr);
-                        curr.direction = Direction::YNeg;
-                        self.leaves[i] = curr;
-                    }
-                    Direction::YPos | Direction::YNeg => {
-                        curr.direction = Direction::XPos;
-                        self.leaves.push(curr);
-                        curr.direction = Direction::XNeg;
-                        self.leaves[i] = curr;
-                    }
-                }
-            }
+            let Leaves {
+                down_leaves,
+                up_leaves,
+                right_leaves,
+                left_leaves,
+            } = std::mem::take(&mut self.leaves);
+
+            // The down leaves become right + left
+            // The up leaves become right + left
+            // The left leaves become up + down
+            // The right leaves become up + down
+
+            let len = up_leaves.len();
+
+            // Let's do some swaparoos
+
+            let mut new_down = right_leaves;
+            let mut new_up = left_leaves;
+            let mut new_right = up_leaves;
+            let mut new_left = down_leaves;
+
+            // We don't need to reserve more space because extend already does it for us.
+            new_down.extend_from_slice(&new_up);
+            new_right.extend_from_slice(&new_left);
+            // This part is trickier: We take the old slice, what formerly was the other and copy
+            // it here
+            // down was right
+            new_left.extend_from_slice(&new_down[0..len]);
+            // right was up
+            new_up.extend_from_slice(&new_right[0..len]);
+
+            self.leaves = Leaves {
+                down_leaves: new_down,
+                up_leaves: new_up,
+                right_leaves: new_right,
+                left_leaves: new_left,
+            };
+
             eprintln!(" done in {:?}", t0.elapsed());
         }
 
         self.remaining -= 1;
-        for leaf in &mut self.leaves {
-            leaf.render(buf, self.config);
+        // TODO: Use normal coordinates
+        for curr in &mut self.leaves.right_leaves {
+            buf[*curr * 4..*curr * 4 + 4].fill(255);
+            *curr -= 1;
+        }
+        for curr in &mut self.leaves.left_leaves {
+            buf[*curr * 4..*curr * 4 + 4].fill(255);
+            *curr += 1;
+        }
+        for curr in &mut self.leaves.right_leaves {
+            buf[*curr * 4..*curr * 4 + 4].fill(255);
+            *curr -= WIDTH;
+        }
+        for curr in &mut self.leaves.right_leaves {
+            buf[*curr * 4..*curr * 4 + 4].fill(255);
+            *curr += WIDTH;
         }
     }
-}
-#[derive(Debug, Clone, Copy)]
-struct Substate {
-    direction: Direction,
-    last: usize,
-}
-
-impl Substate {
-    fn render(&mut self, buf: &mut [u8], config: UserConfig) {
-        let curr = match self.direction {
-            Direction::XPos => self.last + 1,
-            Direction::XNeg => self.last.saturating_sub(1),
-            Direction::YPos => self.last + WIDTH,
-            Direction::YNeg => self.last.saturating_sub(WIDTH),
-        };
-        if (curr * 4 + 4) > buf.len() {
-            return;
-        }
-        buf[curr * 4..curr * 4 + 4].fill(255);
-        self.last = curr;
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Direction {
-    XPos,
-    YPos,
-    XNeg,
-    YNeg,
 }
