@@ -22,7 +22,8 @@ struct UserConfig {
     /// Pixels
     offset_y: f64,
     zoom: f64,
-    third_branch: bool,
+    // 1-4
+    branches: u8,
 }
 fn main() {
     let event_loop = EventLoop::new().unwrap();
@@ -50,7 +51,8 @@ fn main() {
         offset_y: 0.0,
         zoom: 1.0,
         branch_on: 0.5,
-        third_branch: true,
+        // 1-4
+        branches: 3,
     };
     let mut state = RenderState::new_def(config);
     event_loop
@@ -95,7 +97,10 @@ fn main() {
                     config.offset_x -= 0.1;
                     refresh = true;
                 } else if input.key_pressed(KeyCode::KeyT) {
-                    config.third_branch = !config.third_branch;
+                    config.branches += 1;
+                    if config.branches == 5 {
+                        config.branches = 1;
+                    }
                     refresh = true;
                 }
 
@@ -154,40 +159,41 @@ impl RenderState {
                 return;
             }
 
-            let Leaves {
+            let mut down_leaves = vec![];
+            let mut up_leaves = vec![];
+            let mut right_leaves = vec![];
+            let mut left_leaves = vec![];
+
+            down_leaves.extend_from_slice(&self.leaves.left_leaves);
+            up_leaves.extend_from_slice(&self.leaves.right_leaves);
+            left_leaves.extend_from_slice(&self.leaves.down_leaves);
+            right_leaves.extend_from_slice(&self.leaves.up_leaves);
+
+            if self.config.branches >= 2 {
+                down_leaves.extend_from_slice(&self.leaves.right_leaves);
+                up_leaves.extend_from_slice(&self.leaves.left_leaves);
+                right_leaves.extend_from_slice(&self.leaves.down_leaves);
+                left_leaves.extend_from_slice(&self.leaves.up_leaves);
+
+                if self.config.branches >= 3 {
+                    down_leaves.extend_from_slice(&self.leaves.up_leaves);
+                    up_leaves.extend_from_slice(&self.leaves.down_leaves);
+                    right_leaves.extend_from_slice(&self.leaves.left_leaves);
+                    left_leaves.extend_from_slice(&self.leaves.right_leaves);
+                }
+                if self.config.branches == 4 {
+                    down_leaves.extend_from_slice(&self.leaves.down_leaves);
+                    up_leaves.extend_from_slice(&self.leaves.up_leaves);
+                    right_leaves.extend_from_slice(&self.leaves.right_leaves);
+                    left_leaves.extend_from_slice(&self.leaves.left_leaves);
+                }
+            }
+
+            self.leaves = Leaves {
                 down_leaves,
                 up_leaves,
                 right_leaves,
                 left_leaves,
-            } = std::mem::take(&mut self.leaves);
-
-            // The down leaves become right + left
-            // The up leaves become right + left
-            // The left leaves become up + down
-            // The right leaves become up + down
-
-            // Let's do some swaparoos
-            let mut new_down = right_leaves;
-            let mut new_up = left_leaves;
-            let mut new_right = up_leaves;
-            let mut new_left = down_leaves;
-
-            // We don't need to reserve more space because extend already does it for us.
-            new_down.extend_from_slice(&new_up);
-            new_right.extend_from_slice(&new_left);
-            // This part is trickier: We take the old slice, what formerly was the other and copy
-            // it here
-            //
-            // Left is up + down, we constructed from down, need up, which now is right
-            new_left.extend_from_slice(&new_right[0..new_left.len()]);
-            // Up is left + right, we constructed from left, need right, which now is down
-            new_up.extend_from_slice(&new_down[0..new_up.len()]);
-
-            self.leaves = Leaves {
-                down_leaves: new_down,
-                up_leaves: new_up,
-                right_leaves: new_right,
-                left_leaves: new_left,
             };
 
             eprintln!(" done in {:?}", t0.elapsed());
