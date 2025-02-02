@@ -88,16 +88,16 @@ fn main() {
                 if input.key_pressed(KeyCode::Escape) || input.close_requested() {
                     window_target.exit();
                 } else if input.key_held(KeyCode::ArrowUp) {
-                    config.t_y_1 -= 1.0;
+                    config.t_y_1 -= 10.0;
                     refresh = true;
                 } else if input.key_held(KeyCode::ArrowDown) {
-                    config.t_y_1 += 1.0;
+                    config.t_y_1 += 10.0;
                     refresh = true;
                 } else if input.key_held(KeyCode::ArrowLeft) {
-                    config.t_x_1 -= 100.0;
+                    config.t_x_1 -= 10.0;
                     refresh = true;
                 } else if input.key_held(KeyCode::ArrowRight) {
-                    config.t_x_1 += 100.0;
+                    config.t_x_1 += 10.0;
                     refresh = true;
                 } else if input.key_pressed(KeyCode::KeyZ) {
                     config.scale *= 1.33;
@@ -218,10 +218,10 @@ impl RenderState {
                 left_leaves.extend_from_slice(&self.leaves.left_leaves);
             }
             if self.config.branches == 4 {
-                down_leaves.extend_from_slice(&self.leaves.up_leaves);
-                up_leaves.extend_from_slice(&self.leaves.down_leaves);
                 right_leaves.extend_from_slice(&self.leaves.left_leaves);
                 left_leaves.extend_from_slice(&self.leaves.right_leaves);
+                down_leaves.extend_from_slice(&self.leaves.up_leaves);
+                up_leaves.extend_from_slice(&self.leaves.down_leaves);
             }
         }
 
@@ -302,16 +302,25 @@ impl RenderState {
             // Render index
             .for_each(|coords| {
                 let colors = [
-                    [255, 255, 255, 255],
-                    // [0, 0, 0, 0],
-                    // [0, 71, 138, 255],
-                    // [158, 2, 49, 255],
                     // [0, 0, 0, 0],
                     // [0, 0, 0, 0],
-                    // [0, 71, 138, 255],
                     // [0, 0, 0, 0],
                     // [0, 0, 0, 0],
-                    // [158, 2, 49, 255],
+                    // [0, 0, 0, 0],
+                    // [0, 0, 0, 0],
+                    [140, 4, 40, 255], // Carmin [140, 4, 40, 255], // Carmin
+                    [140, 4, 40, 255], // Carmin
+                    [140, 4, 40, 255], // Carmin
+                    [115, 0, 13, 255],
+                    [222, 87, 123, 255],
+                    [140, 4, 40, 255],   // Carmin
+                    [222, 87, 123, 255], // Rojo raro
+                    [222, 87, 123, 255],
+                    [140, 4, 40, 255], // Carmin
+                    [115, 0, 13, 255],
+                    [140, 4, 40, 255],    // Carmin
+                    [222, 87, 123, 255],  // Rojo raro
+                    [230, 119, 184, 255], // Rosa
                 ];
                 let current_color = colors[self.iter_number % colors.len()]; // Transform coords to index
                 let idx = (coords.y * WIDTH as f64 + coords.x).round_ties_even() as usize;
