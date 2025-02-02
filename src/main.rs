@@ -166,10 +166,7 @@ impl RenderState {
             // The left leaves become up + down
             // The right leaves become up + down
 
-            let len = up_leaves.len();
-
             // Let's do some swaparoos
-
             let mut new_down = right_leaves;
             let mut new_up = left_leaves;
             let mut new_right = up_leaves;
@@ -180,10 +177,11 @@ impl RenderState {
             new_right.extend_from_slice(&new_left);
             // This part is trickier: We take the old slice, what formerly was the other and copy
             // it here
-            // down was right
-            new_left.extend_from_slice(&new_down[0..len]);
-            // right was up
-            new_up.extend_from_slice(&new_right[0..len]);
+            //
+            // Left is up + down, we constructed from down, need up, which now is right
+            new_left.extend_from_slice(&new_right[0..new_left.len()]);
+            // Up is left + right, we constructed from left, need right, which now is down
+            new_up.extend_from_slice(&new_down[0..new_up.len()]);
 
             self.leaves = Leaves {
                 down_leaves: new_down,
@@ -197,19 +195,19 @@ impl RenderState {
 
         self.remaining -= 1;
         // TODO: Use normal coordinates
-        for curr in &mut self.leaves.right_leaves {
+        for curr in &mut self.leaves.left_leaves {
             buf[*curr * 4..*curr * 4 + 4].fill(255);
             *curr -= 1;
         }
-        for curr in &mut self.leaves.left_leaves {
+        for curr in &mut self.leaves.right_leaves {
             buf[*curr * 4..*curr * 4 + 4].fill(255);
             *curr += 1;
         }
-        for curr in &mut self.leaves.right_leaves {
+        for curr in &mut self.leaves.up_leaves {
             buf[*curr * 4..*curr * 4 + 4].fill(255);
             *curr -= WIDTH;
         }
-        for curr in &mut self.leaves.right_leaves {
+        for curr in &mut self.leaves.down_leaves {
             buf[*curr * 4..*curr * 4 + 4].fill(255);
             *curr += WIDTH;
         }
